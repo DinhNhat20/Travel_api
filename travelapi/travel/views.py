@@ -55,11 +55,41 @@ class UserViewSet(viewsets.ViewSet, generics.CreateAPIView):
 class ServiceProviderViewSet(viewsets.ModelViewSet):
     queryset = ServiceProvider.objects.all()
     serializer_class = serializers.ServiceProviderSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        queryset = self.queryset
+
+        if self.action.__eq__('list'):
+            q = self.request.query_params.get('q')
+            if q:
+                queryset = queryset.filter(name__icontains=q)
+
+            user = self.request.query_params.get('user')
+            if user:
+                queryset = queryset.filter(user=user)
+
+        return queryset
 
 
 class CustomerViewSet(viewsets.ModelViewSet):
     queryset = Customer.objects.all()
     serializer_class = serializers.CustomerSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        queryset = self.queryset
+
+        if self.action.__eq__('list'):
+            q = self.request.query_params.get('q')
+            if q:
+                queryset = queryset.filter(first_name__icontains=q)
+
+            user = self.request.query_params.get('user')
+            if user:
+                queryset = queryset.filter(user=user)
+
+        return queryset
 
 
 class ServiceTypeViewSet(viewsets.ModelViewSet):
@@ -70,6 +100,25 @@ class ServiceTypeViewSet(viewsets.ModelViewSet):
 class ServiceViewSet(viewsets.ModelViewSet):
     queryset = Service.objects.all()
     serializer_class = serializers.ServiceSerializer
+    pagination_class = paginators.ServicePaginator
+
+    def get_queryset(self):
+        queryset = self.queryset
+
+        if self.action.__eq__('list'):
+            q = self.request.query_params.get('q')
+            if q:
+                queryset = queryset.filter(name__icontains=q)
+
+            address = self.request.query_params.get('address')
+            if address:
+                queryset = queryset.filter(address__icontains=address)
+
+            service_type = self.request.query_params.get('service_type')
+            if service_type:
+                queryset = queryset.filter(service_type=service_type)
+
+        return queryset
 
 
 class DiscountViewSet(viewsets.ModelViewSet):
@@ -81,6 +130,20 @@ class ServiceScheduleViewSet(viewsets.ModelViewSet):
     queryset = ServiceSchedule.objects.all()
     serializer_class = serializers.ServiceScheduleSerializer
 
+    def get_queryset(self):
+        queryset = self.queryset
+
+        if self.action.__eq__('list'):
+
+            service = self.request.query_params.get('service')
+            if service:
+                queryset = queryset.filter(service=service)
+
+            # Sort the queryset by the 'date' field in ascending order
+            queryset = queryset.order_by('date')
+
+        return queryset
+
 
 class BookingViewSet(viewsets.ModelViewSet):
     queryset = Booking.objects.all()
@@ -90,5 +153,3 @@ class BookingViewSet(viewsets.ModelViewSet):
 class ReviewViewSet(viewsets.ModelViewSet):
     queryset = Review.objects.all()
     serializer_class = serializers.ReviewSerializer
-
-

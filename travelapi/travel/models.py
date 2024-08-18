@@ -4,6 +4,7 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 from ckeditor.fields import RichTextField
 from cloudinary.models import CloudinaryField
+from django.db.models import Avg
 
 
 class BaseModel(models.Model):
@@ -70,6 +71,10 @@ class Service(BaseModel):
 
     def __str__(self):
         return self.name
+
+    def average_rating(self):
+        avg_rating = self.review_set.aggregate(Avg('star'))['star__avg']
+        return avg_rating or 0  # Return 0 if there are no reviews
 
 
 class Discount(BaseModel):

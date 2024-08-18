@@ -24,7 +24,7 @@ SECRET_KEY = 'django-insecure-+ifh)o)1npw0d64m+88pbo@kvo=jxa%-33!22)+xhbq&4g**h5
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['192.168.1.7']
 
 # Application definition
 
@@ -150,3 +150,7 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+CLIENT_ID = 'cEm3TTdnpSwKsIEaHeqZiSbf9XsniJctD8zVmsAr'
+CLIENT_SECRET = 'Qq8Nv5cl5vTZezJvPqpkqzJSY7CfpbF5iojz49evlDfk43VMzpi5I3xm2s5i0lx9qxrmGGfyaPXO7ccW8zP9AiK8dLrWdpE2OwmiRH9VMO6eiprdLTeO7PM63gSbqt8g'
+CLIENT_SECRET_SAU_KHI_SAVE = 'pbkdf2_sha256$720000$j7bJ8dHhbsRPulPNHJ9Rt7$aaLSwUQpLDxMFA+ynHd3746fBXF9I43XRjx2VPRAGr0=(không dùng được, dùng client_secret trước khi save)'

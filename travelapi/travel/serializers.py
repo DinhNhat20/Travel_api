@@ -38,7 +38,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'first_name', 'last_name', 'email', 'username', 'password', 'avatar', 'role']
+        fields = ['id', 'first_name', 'last_name', 'email', 'phone', 'address', 'username', 'password', 'avatar', 'role']
         extra_kwargs = {
             'password': {
                 'write_only': True
@@ -65,9 +65,21 @@ class ServiceTypeSerializer(serializers.ModelSerializer):
 
 
 class ServiceSerializer(serializers.ModelSerializer):
+    average_rating = serializers.SerializerMethodField()
+
+    def get_average_rating(self, obj):
+        return obj.average_rating()
+
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
+        rep['image'] = instance.image.url
+
+        return rep
+
     class Meta:
         model = Service
-        fields = '__all__'
+        fields = ['id', 'created_date', 'updated_date', 'active', 'name', 'address', 'image', 'price',
+                  'description', 'require', 'discount', 'service_type', 'service_provider', 'average_rating']
 
 
 class DiscountSerializer(serializers.ModelSerializer):
