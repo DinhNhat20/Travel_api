@@ -1,9 +1,10 @@
 from django.contrib import admin
 from django.utils.html import mark_safe
 
-from travel.models import Role, User, ServiceProvider, Customer, ServiceType, Service, Discount, ServiceSchedule, \
-    Booking, Review
+from travel.models import Role, User, Provider, Customer, ServiceType, Province, Image, Service, Discount, \
+    ServiceSchedule, Booking, Review
 from django import forms
+
 from ckeditor_uploader.widgets import CKEditorUploadingWidget
 
 
@@ -22,7 +23,8 @@ class MyRoleAdmin(admin.ModelAdmin):
 
 
 class MyUserAdmin(admin.ModelAdmin):
-    list_display = ['id', 'username', 'password', 'is_superuser', 'first_name', 'last_name', 'email', 'phone', 'address', 'is_staff',
+    list_display = ['id', 'username', 'password', 'is_superuser', 'first_name', 'last_name', 'email', 'phone',
+                    'address', 'is_staff',
                     'is_active', 'date_joined', 'role']
     search_fields = ['id', 'username', 'first_name', 'last_name']
     list_filter = ['is_superuser', 'is_staff', 'is_active', 'role']
@@ -43,9 +45,11 @@ class MyUserAdmin(admin.ModelAdmin):
 
 admin.site.register(Role, MyRoleAdmin)
 admin.site.register(User, MyUserAdmin)
-admin.site.register(ServiceProvider)
+admin.site.register(Provider)
 admin.site.register(Customer)
 admin.site.register(ServiceType)
+admin.site.register(Province)
+admin.site.register(Image)
 admin.site.register(Service)
 admin.site.register(Discount)
 admin.site.register(ServiceSchedule)

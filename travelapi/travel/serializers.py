@@ -1,8 +1,8 @@
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
-from travel.models import Role, User, ServiceProvider, Customer, ServiceType, Service, Discount, ServiceSchedule, \
-    Booking, Review
+from travel.models import Role, User, Provider, Customer, ServiceType, Province, Image, Service, Discount, \
+    ServiceSchedule, Booking, Review
 
 
 class ItemSerializer(serializers.ModelSerializer):
@@ -38,7 +38,8 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'first_name', 'last_name', 'email', 'phone', 'address', 'username', 'password', 'avatar', 'role']
+        fields = ['id', 'email', 'CCCD', 'phone', 'address', 'username', 'password', 'avatar',
+                  'role']
         extra_kwargs = {
             'password': {
                 'write_only': True
@@ -46,9 +47,9 @@ class UserSerializer(serializers.ModelSerializer):
         }
 
 
-class ServiceProviderSerializer(serializers.ModelSerializer):
+class ProviderSerializer(serializers.ModelSerializer):
     class Meta:
-        model = ServiceProvider
+        model = Provider
         fields = '__all__'
 
 
@@ -64,28 +65,45 @@ class ServiceTypeSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-class ServiceSerializer(serializers.ModelSerializer):
-    average_rating = serializers.SerializerMethodField()
+class ProvinceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Province
+        fields = '__all__'
 
-    def get_average_rating(self, obj):
-        return obj.average_rating()
 
+class ImageSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         rep = super().to_representation(instance)
-        rep['image'] = instance.image.url
+        rep['path'] = instance.path.url
 
         return rep
 
     class Meta:
-        model = Service
-        fields = ['id', 'created_date', 'updated_date', 'active', 'name', 'address', 'image', 'price',
-                  'description', 'require', 'discount', 'service_type', 'service_provider', 'average_rating']
+        model = Image
+        fields = ['path', 'service']
 
 
 class DiscountSerializer(serializers.ModelSerializer):
     class Meta:
         model = Discount
-        fields = '__all__'
+        fields = ['id', 'discount']
+
+
+class ServiceSerializer(serializers.ModelSerializer):
+    average_rating = serializers.SerializerMethodField()
+    images = serializers.SerializerMethodField()
+    discount = DiscountSerializer()
+
+    def get_average_rating(self, obj):
+        return obj.average_rating()
+
+    def get_images(self, obj):
+        return [image.path.url for image in obj.get_images()]
+
+    class Meta:
+        model = Service
+        fields = ['id', 'name', 'address', 'price', 'description', 'require', 'discount', 'service_type', 'provider',
+                  'province', 'average_rating', 'images']
 
 
 class ServiceScheduleSerializer(serializers.ModelSerializer):

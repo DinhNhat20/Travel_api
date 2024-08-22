@@ -25,12 +25,13 @@ class Role(models.Model):
 
 class User(AbstractUser):
     avatar = CloudinaryField(null=True)
+    CCCD = models.CharField(max_length=12, null=False)
     phone = models.CharField(max_length=10, null=False)
     address = models.CharField(max_length=100, null=False)
     role = models.ForeignKey(Role, on_delete=models.PROTECT, null=True)
 
 
-class ServiceProvider(BaseModel):
+class Provider(BaseModel):
     name = models.CharField(max_length=100, null=False)
     description = RichTextField(null=True, blank=True)
     user = models.OneToOneField(User, on_delete=models.CASCADE, primary_key=True)
@@ -40,17 +41,16 @@ class ServiceProvider(BaseModel):
 
 
 class Customer(BaseModel):
-    first_name = models.CharField(max_length=30, null=False)
-    last_name = models.CharField(max_length=30, null=False)
+    full_name = models.CharField(max_length=50, null=False)
     birthday = models.DateField(null=False)
     gender = models.CharField(max_length=15, null=False)
     user = models.OneToOneField(User, on_delete=models.CASCADE, primary_key=True)
 
     def __str__(self):
-        return f"{self.last_name} - {self.first_name}"
+        return self.full_name
 
 
-class ServiceType(BaseModel):
+class ServiceType(models.Model):
     name = models.CharField(max_length=50, null=False)
     description = RichTextField(null=True, blank=True)
 
@@ -58,16 +58,32 @@ class ServiceType(BaseModel):
         return self.name
 
 
+class Province(models.Model):
+    name = models.CharField(max_length=50, null=False)
+
+    def __str__(self):
+        return self.name
+
+
+class Image(models.Model):
+    path = CloudinaryField(null=True)
+    service = models.ForeignKey('Service', on_delete=models.CASCADE)
+
+    def __str__(self):
+        return f"Hình của service {self.service}"
+
+
 class Service(BaseModel):
     name = models.CharField(max_length=100, null=False)
     address = models.CharField(max_length=100, null=False)
-    image = CloudinaryField(null=True)
     price = models.FloatField(null=False, default=0)
     description = RichTextField(null=True, blank=True)
     require = RichTextField(null=True, blank=True)
     discount = models.ForeignKey('Discount', on_delete=models.PROTECT, null=True)
     service_type = models.ForeignKey(ServiceType, on_delete=models.PROTECT)
-    service_provider = models.ForeignKey(ServiceProvider, on_delete=models.CASCADE)
+    provider = models.ForeignKey(Provider, on_delete=models.CASCADE)
+    province = models.ForeignKey(Province, on_delete=models.PROTECT)
+    reviews = models.ManyToManyField('Customer', through='Review', null=True, blank=True)
 
     def __str__(self):
         return self.name
@@ -76,30 +92,42 @@ class Service(BaseModel):
         avg_rating = self.review_set.aggregate(Avg('star'))['star__avg']
         return avg_rating or 0  # Return 0 if there are no reviews
 
+    def get_images(self):
+        return self.image_set.all()
 
-class Discount(BaseModel):
-    discount = models.FloatField(null=False)
-    name = models.CharField(max_length=100, null=False)
+
+class Discount(models.Model):
+    discount = models.IntegerField(null=False)
 
     def __str__(self):
-        return self.name
+        return f"{self.discount}%"
 
 
 class ServiceSchedule(BaseModel):
     date = models.DateField(null=False)
-    max_slot = models.IntegerField(null=False)
+    max_participants = models.IntegerField(null=False)
     available = models.IntegerField(null=True, default=0)
-    start_time = models.IntegerField(null=False)
-    end_time = models.IntegerField(null=False)
+    start_time = models.TimeField(null=False)
+    end_time = models.TimeField(null=False)
     service = models.ForeignKey(Service, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return f"{self.service} - {self.date}"
 
 
 class Booking(BaseModel):
+    full_name = models.CharField(max_length=50, null=False, default='')
+    phone = models.CharField(max_length=10, null=False, default='')
+    email = models.CharField(max_length=50, null=False, default='')
     quantity = models.IntegerField(null=False)
     total_price = models.FloatField(null=False)
     payment_status = models.BooleanField(default=False)
+    payment_method = models.CharField(max_length=20, null=True)
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
     service_schedule = models.ForeignKey(ServiceSchedule, on_delete=models.PROTECT)
+
+    def __str__(self):
+        return f"{self.full_name} - {self.service_schedule}"
 
 
 class Review(BaseModel):
@@ -107,3 +135,6 @@ class Review(BaseModel):
     content = RichTextField(null=True, blank=True)
     customer = models.ForeignKey(Customer, on_delete=models.PROTECT)
     service = models.ForeignKey(Service, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return f"{self.customer} - {self.service}"

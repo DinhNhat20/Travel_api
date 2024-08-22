@@ -24,7 +24,10 @@ SECRET_KEY = 'django-insecure-+ifh)o)1npw0d64m+88pbo@kvo=jxa%-33!22)+xhbq&4g**h5
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['192.168.1.7']
+ALLOWED_HOSTS = ['192.168.1.8']
+
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_METHODS = ['GET', 'POST', 'PUT', 'DELETE']
 
 # Application definition
 
@@ -151,6 +154,7 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-CLIENT_ID = 'cEm3TTdnpSwKsIEaHeqZiSbf9XsniJctD8zVmsAr'
-CLIENT_SECRET = 'Qq8Nv5cl5vTZezJvPqpkqzJSY7CfpbF5iojz49evlDfk43VMzpi5I3xm2s5i0lx9qxrmGGfyaPXO7ccW8zP9AiK8dLrWdpE2OwmiRH9VMO6eiprdLTeO7PM63gSbqt8g'
-CLIENT_SECRET_SAU_KHI_SAVE = 'pbkdf2_sha256$720000$j7bJ8dHhbsRPulPNHJ9Rt7$aaLSwUQpLDxMFA+ynHd3746fBXF9I43XRjx2VPRAGr0=(không dùng được, dùng client_secret trước khi save)'
+CLIENT_ID = 'nqnoxN5LnpCsW1dOKugY2cLs7AgVexVV9IoUBe3k'
+CLIENT_SECRET = 'umy4ALbRIchL82EXsTJeDt6pNexSKdVM3VvvCRqO8DArLYXqDNvj5mEJ07d4U6OlTlaVw0bB8gBuOFdqJdfsgzrOjqqvcDfHqls1m8YfS4aWlhwwHwFqdtDOJRRjZaZM'
+CLIENT_SECRET_SAU_KHI_SAVE = 'pbkdf2_sha256$720000$iTyFllNLgkxo0eXtiuq6L9$EsGc5PFw7WSYvAh6mL3mYtlMyUuCvmeg7ql7GAPh9W0='
+
