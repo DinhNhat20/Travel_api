@@ -5,7 +5,7 @@ from django.contrib.auth import authenticate, login
 from django.contrib.auth.hashers import check_password, make_password
 from django.core.mail import EmailMessage
 from django.db.models import Avg, Count
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from django.http import HttpResponse, HttpRequest, JsonResponse
 from django.template.response import TemplateResponse
 from django.views import View
@@ -28,7 +28,7 @@ from travel.models import Role, User, Provider, Customer, ServiceType, Province,
 from travel import serializers, paginators
 from travel.serializers import RoleSerializer, ProviderSerializer, CustomerSerializer, ServiceTypeSerializer, \
     ProvinceSerializer, ImageSerializer, ServiceSerializer, DiscountSerializer, ServiceScheduleSerializer, \
-    BookingSerializer, ReviewSerializer
+    BookingSerializer, ReviewSerializer, ServiceRevenueSerializer
 
 
 class RoleViewSet(viewsets.ModelViewSet):  #ModelViewSet: lấy tất cả các action CRUD
@@ -119,6 +119,16 @@ class ImageViewSet(viewsets.ModelViewSet):
     queryset = Image.objects.all()
     serializer_class = serializers.ImageSerializer
 
+    def get_queryset(self):
+        queryset = self.queryset
+
+        if self.action.__eq__('list'):
+            service = self.request.query_params.get('service')
+            if service:
+                queryset = queryset.filter(service=service)
+
+        return queryset
+
 
 class ServiceViewSet(viewsets.ModelViewSet):
     queryset = Service.objects.all()
@@ -185,6 +195,45 @@ class ServiceScheduleViewSet(viewsets.ModelViewSet):
 class BookingViewSet(viewsets.ModelViewSet):
     queryset = Booking.objects.all()
     serializer_class = serializers.BookingSerializer
+
+    def get_queryset(self):
+        queryset = self.queryset
+
+        if self.action == 'list':
+            service_schedule = self.request.query_params.get('service_schedule')
+            if service_schedule:
+                queryset = queryset.filter(service_schedule=service_schedule)
+
+        return queryset
+
+    @action(detail=False, methods=['get'], url_path='customer-bookings', url_name='customer-bookings')
+    def customer_bookings(self, request):
+        customer_id = request.query_params.get('customer_id')
+
+        if not customer_id:
+            return Response({"detail": "customer_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        queryset = self.queryset.filter(customer=customer_id, payment_status=True)
+        data = []
+
+        for booking in queryset:
+            service_schedule = booking.service_schedule
+            service = service_schedule.service
+
+            images = [image.path.url for image in service.image_set.all()]
+            data.append({
+                'id': booking.id,
+                'service_id': service.id,
+                'service_name': service.name,
+                'service_address': service.address,
+                'service_images': images,
+                'date': service_schedule.date,
+                'start_time': service_schedule.start_time,
+                'end_time': service_schedule.end_time,
+                'quantity': booking.quantity
+            })
+
+        return Response(data, status=status.HTTP_200_OK)
 
 
 class ReviewViewSet(viewsets.ModelViewSet):
@@ -282,3 +331,70 @@ def create_payment(request):
             return JsonResponse({"error": str(e)})
     else:
         return JsonResponse({"error": "Only POST requests are allowed"})
+
+
+def get_customers_by_schedule(request, schedule_id):
+    # Lấy danh sách các đặt chỗ liên quan đến lịch trình cụ thể
+    bookings = Booking.objects.filter(service_schedule_id=schedule_id).select_related('customer')
+
+    # Trích xuất thông tin của khách hàng từ các đặt chỗ
+    customers = []
+    for booking in bookings:
+        customer = booking.customer
+        customers.append({
+            'full_name': customer.full_name,
+            'phone': customer.user.phone,
+            'address': customer.user.address,
+            'avatar': customer.user.avatar.url if customer.user.avatar else None
+        })
+
+    return JsonResponse(customers, safe=False)
+
+
+class RevenueViewSet(viewsets.ViewSet):
+
+    @action(detail=True, methods=['get'], url_path='monthly-revenue')
+    def monthly_revenue(self, request, pk=None):
+        month = request.query_params.get('month')
+        year = request.query_params.get('year')
+
+        if not month or not year:
+            return Response({"error": "Month and year parameters are required"}, status=400)
+
+        try:
+            month = int(month)
+            year = int(year)
+        except ValueError:
+            return Response({"error": "Invalid month or year"}, status=400)
+
+        provider = get_object_or_404(Provider, pk=pk)
+        revenue_data = provider.revenue_by_month(month, year)
+        serializer = ServiceRevenueSerializer(revenue_data, many=True)
+        return Response(serializer.data, status=200)
+
+    @action(detail=False, methods=['get'], url_path='yearly-revenue')
+    def yearly_revenue(self, request):
+        year = request.query_params.get('year')
+
+        if not year:
+            return Response({"error": "Year parameter is required"}, status=400)
+
+        try:
+            year = int(year)
+        except ValueError:
+            return Response({"error": "Invalid year"}, status=400)
+
+        providers = Provider.objects.all()
+        monthly_revenue = []
+
+        for month in range(1, 13):
+            total_revenue = 0
+            for provider in providers:
+                revenue_data = provider.revenue_by_month(month, year)
+                total_revenue += sum(item['total_revenue'] for item in revenue_data)
+            monthly_revenue.append({
+                'month': month,
+                'total_revenue': total_revenue
+            })
+
+        return Response(monthly_revenue, status=200)

@@ -4,7 +4,7 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 from ckeditor.fields import RichTextField
 from cloudinary.models import CloudinaryField
-from django.db.models import Avg
+from django.db.models import Avg, Sum
 
 
 class BaseModel(models.Model):
@@ -35,6 +35,17 @@ class Provider(BaseModel):
     name = models.CharField(max_length=100, null=False)
     description = RichTextField(null=True, blank=True)
     user = models.OneToOneField(User, on_delete=models.CASCADE, primary_key=True)
+
+    def revenue_by_month(self, month, year):
+        services = self.service_set.all()
+        bookings = Booking.objects.filter(
+            service_schedule__service__in=services,
+            created_date__month=month,
+            created_date__year=year,
+            payment_status=True  # Lọc các booking đã thanh toán
+        ).values('service_schedule__service__name').annotate(total_revenue=Sum('total_price'))
+
+        return bookings
 
     def __str__(self):
         return self.name

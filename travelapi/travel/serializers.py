@@ -80,7 +80,7 @@ class ImageSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Image
-        fields = ['path', 'service']
+        fields = ['id', 'path', 'service']
 
 
 class DiscountSerializer(serializers.ModelSerializer):
@@ -122,3 +122,10 @@ class ReviewSerializer(serializers.ModelSerializer):
     class Meta:
         model = Review
         fields = '__all__'
+
+
+class ServiceRevenueSerializer(serializers.Serializer):
+    service_name = serializers.CharField(source='service_schedule__service__name')
+    total_revenue = serializers.FloatField()
+
+
