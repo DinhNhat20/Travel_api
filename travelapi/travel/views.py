@@ -84,6 +84,14 @@ class ProviderViewSet(viewsets.ModelViewSet):
 
         return queryset
 
+    # API endpoint để lấy tất cả các reviews của một provider
+    @action(detail=True, methods=['get'], url_path='all-reviews', url_name='all-reviews')
+    def all_reviews(self, request, pk=None):
+        provider = self.get_object()  # Lấy đối tượng Provider từ pk
+        reviews = provider.get_all_reviews()
+        serializer = ReviewSerializer(reviews, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
 
 class CustomerViewSet(viewsets.ModelViewSet):
     queryset = Customer.objects.all()
@@ -235,10 +243,64 @@ class BookingViewSet(viewsets.ModelViewSet):
 
         return Response(data, status=status.HTTP_200_OK)
 
+    @action(detail=False, methods=['get'], url_path='customer-bookings-notyetpaid', url_name='customer-bookings-notyetpaid')
+    def customer_bookings_notyetpaid(self, request):
+        customer_id = request.query_params.get('customer_id')
+
+        if not customer_id:
+            return Response({"detail": "customer_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        queryset = self.queryset.filter(customer=customer_id, payment_status=False)
+        data = []
+
+        for booking in queryset:
+            service_schedule = booking.service_schedule
+            service = service_schedule.service
+
+            images = [image.path.url for image in service.image_set.all()]
+            data.append({
+                'id': booking.id,
+                'service_id': service.id,
+                'service_name': service.name,
+                'service_address': service.address,
+                'service_images': images,
+                'date': service_schedule.date,
+                'start_time': service_schedule.start_time,
+                'end_time': service_schedule.end_time,
+                'quantity': booking.quantity,
+                'total_price': booking.total_price
+            })
+
+        return Response(data, status=status.HTTP_200_OK)
+
 
 class ReviewViewSet(viewsets.ModelViewSet):
     queryset = Review.objects.all()
     serializer_class = serializers.ReviewSerializer
+
+    @action(detail=False, methods=['get'], url_path='service-reviews', url_name='service-reviews')
+    def service_reviews(self, request):
+        service_id = request.query_params.get('service_id')
+
+        if not service_id:
+            return Response({"detail": "service_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Lọc danh sách đánh giá dựa trên service_id
+        reviews = self.queryset.filter(service_id=service_id)
+
+        data = []
+        for review in reviews:
+            data.append({
+                'review_id': review.id,
+                'customer_avatar': review.customer.user.avatar.url if review.customer.user.avatar else None,
+                'customer_name': review.customer.full_name,
+                'rating': review.star,
+                'content': review.content,
+                'created_date': review.created_date,
+                'updated_date': review.updated_date,
+            })
+
+        return Response(data, status=status.HTTP_200_OK)
 
 
 @csrf_exempt

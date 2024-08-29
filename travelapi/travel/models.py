@@ -47,6 +47,13 @@ class Provider(BaseModel):
 
         return bookings
 
+    def get_all_reviews(self):
+        # Lấy tất cả các dịch vụ thuộc về Provider này
+        services = self.service_set.all()
+        # Lấy tất cả các đánh giá liên quan đến các dịch vụ này
+        reviews = Review.objects.filter(service__in=services)
+        return reviews
+
     def __str__(self):
         return self.name
 
