@@ -97,7 +97,7 @@ class Service(BaseModel):
     price = models.FloatField(null=False, default=0)
     description = RichTextField(null=True, blank=True)
     require = RichTextField(null=True, blank=True)
-    discount = models.ForeignKey('Discount', on_delete=models.PROTECT, null=True)
+    discount = models.ForeignKey('Discount', on_delete=models.PROTECT, null=True, blank=True)
     service_type = models.ForeignKey(ServiceType, on_delete=models.PROTECT)
     provider = models.ForeignKey(Provider, on_delete=models.CASCADE)
     province = models.ForeignKey(Province, on_delete=models.PROTECT)
@@ -105,6 +105,9 @@ class Service(BaseModel):
 
     def __str__(self):
         return self.name
+
+    def total_reviews(self):
+        return self.review_set.count()
 
     def average_rating(self):
         avg_rating = self.review_set.aggregate(Avg('star'))['star__avg']

@@ -90,9 +90,13 @@ class DiscountSerializer(serializers.ModelSerializer):
 
 
 class ServiceSerializer(serializers.ModelSerializer):
+    total_reviews = serializers.SerializerMethodField()
     average_rating = serializers.SerializerMethodField()
     images = serializers.SerializerMethodField()
     discount = DiscountSerializer()
+
+    def get_total_reviews(self, obj):
+        return obj.review_set.count()
 
     def get_average_rating(self, obj):
         return obj.average_rating()
@@ -103,7 +107,14 @@ class ServiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Service
         fields = ['id', 'name', 'address', 'price', 'description', 'require', 'discount', 'service_type', 'provider',
-                  'province', 'average_rating', 'images']
+                  'province', 'total_reviews', 'average_rating', 'images']
+
+
+class Service01Serializer(serializers.ModelSerializer):
+    class Meta:
+        model = Service
+        fields = ['id', 'name', 'address', 'price', 'description', 'require', 'discount', 'service_type', 'provider',
+                  'province']
 
 
 class ServiceScheduleSerializer(serializers.ModelSerializer):
@@ -127,5 +138,3 @@ class ReviewSerializer(serializers.ModelSerializer):
 class ServiceRevenueSerializer(serializers.Serializer):
     service_name = serializers.CharField(source='service_schedule__service__name')
     total_revenue = serializers.FloatField()
-
-

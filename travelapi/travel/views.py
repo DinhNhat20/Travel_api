@@ -13,6 +13,8 @@ from rest_framework import viewsets, generics, status, parsers, permissions
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.pagination import PageNumberPagination
+from django.utils import timezone
 
 import time
 from datetime import datetime
@@ -138,6 +140,11 @@ class ImageViewSet(viewsets.ModelViewSet):
         return queryset
 
 
+class Service01ViewSet(viewsets.ModelViewSet):
+    queryset = Service.objects.all()
+    serializer_class = serializers.Service01Serializer
+
+
 class ServiceViewSet(viewsets.ModelViewSet):
     queryset = Service.objects.all()
     serializer_class = serializers.ServiceSerializer
@@ -190,9 +197,19 @@ class ServiceScheduleViewSet(viewsets.ModelViewSet):
 
         if self.action.__eq__('list'):
 
+            # Lấy ngày hiện tại
+            today = timezone.now().date()
+
             service = self.request.query_params.get('service')
             if service:
                 queryset = queryset.filter(service=service)
+
+            # Lọc theo tham số query 'upcoming' nếu có
+            upcoming = self.request.query_params.get('upcoming')
+
+            # Nếu 'upcoming' là True, lọc các service schedule có ngày lớn hơn hoặc bằng ngày hiện tại
+            if upcoming == 'true':
+                queryset = queryset.filter(date__gte=today)
 
             # Sort the queryset by the 'date' field in ascending order
             queryset = queryset.order_by('date')
@@ -200,9 +217,16 @@ class ServiceScheduleViewSet(viewsets.ModelViewSet):
         return queryset
 
 
+class CustomPageNumberPagination(PageNumberPagination):
+    page_size = 5  # Số lượng đánh giá mỗi trang
+    page_size_query_param = 'page_size'
+    max_page_size = 10
+
+
 class BookingViewSet(viewsets.ModelViewSet):
     queryset = Booking.objects.all()
     serializer_class = serializers.BookingSerializer
+    pagination_class = CustomPageNumberPagination  # Đặt class phân trang
 
     def get_queryset(self):
         queryset = self.queryset
@@ -221,10 +245,14 @@ class BookingViewSet(viewsets.ModelViewSet):
         if not customer_id:
             return Response({"detail": "customer_id is required"}, status=status.HTTP_400_BAD_REQUEST)
 
-        queryset = self.queryset.filter(customer=customer_id, payment_status=True)
+        queryset = self.queryset.filter(customer=customer_id, payment_status=True, active=True)
+
+        paginator = self.pagination_class()
+        paginated_bookings = paginator.paginate_queryset(queryset, request)
+
         data = []
 
-        for booking in queryset:
+        for booking in paginated_bookings:
             service_schedule = booking.service_schedule
             service = service_schedule.service
 
@@ -241,9 +269,10 @@ class BookingViewSet(viewsets.ModelViewSet):
                 'quantity': booking.quantity
             })
 
-        return Response(data, status=status.HTTP_200_OK)
+        return paginator.get_paginated_response(data)
 
-    @action(detail=False, methods=['get'], url_path='customer-bookings-notyetpaid', url_name='customer-bookings-notyetpaid')
+    @action(detail=False, methods=['get'], url_path='customer-bookings-notyetpaid',
+            url_name='customer-bookings-notyetpaid')
     def customer_bookings_notyetpaid(self, request):
         customer_id = request.query_params.get('customer_id')
 
@@ -251,9 +280,13 @@ class BookingViewSet(viewsets.ModelViewSet):
             return Response({"detail": "customer_id is required"}, status=status.HTTP_400_BAD_REQUEST)
 
         queryset = self.queryset.filter(customer=customer_id, payment_status=False)
+
+        paginator = self.pagination_class()
+        paginated_bookings = paginator.paginate_queryset(queryset, request)
+
         data = []
 
-        for booking in queryset:
+        for booking in paginated_bookings:
             service_schedule = booking.service_schedule
             service = service_schedule.service
 
@@ -271,12 +304,46 @@ class BookingViewSet(viewsets.ModelViewSet):
                 'total_price': booking.total_price
             })
 
-        return Response(data, status=status.HTTP_200_OK)
+        return paginator.get_paginated_response(data)
+
+    @action(detail=False, methods=['get'], url_path='bookings-history', url_name='bookings-history')
+    def bookings_history(self, request):
+        customer_id = request.query_params.get('customer_id')
+
+        if not customer_id:
+            return Response({"detail": "customer_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        queryset = self.queryset.filter(customer=customer_id, payment_status=True)
+
+        paginator = self.pagination_class()
+        paginated_bookings = paginator.paginate_queryset(queryset, request)
+
+        data = []
+
+        for booking in paginated_bookings:
+            service_schedule = booking.service_schedule
+            service = service_schedule.service
+
+            images = [image.path.url for image in service.image_set.all()]
+            data.append({
+                'id': booking.id,
+                'service_id': service.id,
+                'service_name': service.name,
+                'service_address': service.address,
+                'service_images': images,
+                'date': service_schedule.date,
+                'start_time': service_schedule.start_time,
+                'end_time': service_schedule.end_time,
+                'quantity': booking.quantity
+            })
+
+        return paginator.get_paginated_response(data)
 
 
 class ReviewViewSet(viewsets.ModelViewSet):
     queryset = Review.objects.all()
     serializer_class = serializers.ReviewSerializer
+    pagination_class = CustomPageNumberPagination  # Đặt class phân trang
 
     @action(detail=False, methods=['get'], url_path='service-reviews', url_name='service-reviews')
     def service_reviews(self, request):
@@ -288,8 +355,12 @@ class ReviewViewSet(viewsets.ModelViewSet):
         # Lọc danh sách đánh giá dựa trên service_id
         reviews = self.queryset.filter(service_id=service_id)
 
+        # Phân trang
+        paginator = self.pagination_class()
+        paginated_reviews = paginator.paginate_queryset(reviews, request)
+
         data = []
-        for review in reviews:
+        for review in paginated_reviews:
             data.append({
                 'review_id': review.id,
                 'customer_avatar': review.customer.user.avatar.url if review.customer.user.avatar else None,
@@ -300,7 +371,8 @@ class ReviewViewSet(viewsets.ModelViewSet):
                 'updated_date': review.updated_date,
             })
 
-        return Response(data, status=status.HTTP_200_OK)
+        # Trả về dữ liệu phân trang với cấu trúc giống như trước
+        return paginator.get_paginated_response(data)
 
 
 @csrf_exempt

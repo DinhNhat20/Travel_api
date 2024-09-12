@@ -18,6 +18,7 @@ r.register('service-schedules', views.ServiceScheduleViewSet, 'service-schedules
 r.register('bookings', views.BookingViewSet, 'bookings'),
 r.register('reviews', views.ReviewViewSet, 'reviews'),
 r.register('revenue', views.RevenueViewSet, basename='revenue')
+r.register('services01', views.Service01ViewSet, 'services01')
 
 urlpatterns = [
     path('', include(r.urls)),
