@@ -145,7 +145,7 @@ class Booking(BaseModel):
     payment_status = models.BooleanField(default=False)
     payment_method = models.CharField(max_length=20, null=True)
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
-    service_schedule = models.ForeignKey(ServiceSchedule, on_delete=models.PROTECT)
+    service_schedule = models.ForeignKey(ServiceSchedule, on_delete=models.CASCADE)
 
     def __str__(self):
         return f"{self.full_name} - {self.service_schedule}"

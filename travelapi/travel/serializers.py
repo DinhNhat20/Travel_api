@@ -24,7 +24,10 @@ class UserSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         rep = super().to_representation(instance)
-        rep['avatar'] = instance.avatar.url
+        if instance.avatar:
+            rep['avatar'] = instance.avatar.url
+        else:
+            rep['avatar'] = None  # hoặc một giá trị mặc định nào đó
 
         return rep
 

@@ -15,6 +15,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 from django.utils import timezone
+from rest_framework.parsers import JSONParser, MultiPartParser
 
 import time
 from datetime import datetime
@@ -36,12 +37,13 @@ from travel.serializers import RoleSerializer, ProviderSerializer, CustomerSeria
 class RoleViewSet(viewsets.ModelViewSet):  #ModelViewSet: lấy tất cả các action CRUD
     queryset = Role.objects.all()
     serializer_class = serializers.RoleSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
 
 class UserViewSet(viewsets.ViewSet, generics.CreateAPIView):
     queryset = User.objects.filter(is_active=True)
     serializer_class = serializers.UserSerializer
-    parser_classes = [parsers.MultiPartParser, ]
+    parser_classes = [JSONParser, MultiPartParser]
 
     def get_permissions(self):
         if self.action in ['get_current_user', 'change-password']:
@@ -65,6 +67,22 @@ class UserViewSet(viewsets.ViewSet, generics.CreateAPIView):
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(serializers.UserSerializer(user).data)
+
+    @action(methods=['post'], detail=False, url_path='change-password')
+    def change_password(self, request):
+        user = request.user
+        old_password = request.data.get('oldPassword')
+        new_password = request.data.get('newPassword')
+
+        # Kiểm tra xem mật khẩu cũ có đúng không
+        if not check_password(old_password, user.password):
+            return Response({"detail": "Mật khẩu cũ không đúng."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Cập nhật mật khẩu mới
+        user.password = make_password(new_password)
+        user.save()
+
+        return Response({"detail": "Đổi mật khẩu thành công."}, status=status.HTTP_200_OK)
 
 
 class ProviderViewSet(viewsets.ModelViewSet):
@@ -118,16 +136,19 @@ class CustomerViewSet(viewsets.ModelViewSet):
 class ServiceTypeViewSet(viewsets.ModelViewSet):
     queryset = ServiceType.objects.all()
     serializer_class = serializers.ServiceTypeSerializer
+    # permission_classes = [permissions.IsAuthenticated]
 
 
 class ProvinceViewSet(viewsets.ModelViewSet):
     queryset = Province.objects.all()
     serializer_class = serializers.ProvinceSerializer
+    # permission_classes = [permissions.IsAuthenticated]
 
 
 class ImageViewSet(viewsets.ModelViewSet):
     queryset = Image.objects.all()
     serializer_class = serializers.ImageSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         queryset = self.queryset
@@ -143,12 +164,14 @@ class ImageViewSet(viewsets.ModelViewSet):
 class Service01ViewSet(viewsets.ModelViewSet):
     queryset = Service.objects.all()
     serializer_class = serializers.Service01Serializer
+    permission_classes = [permissions.IsAuthenticated]
 
 
 class ServiceViewSet(viewsets.ModelViewSet):
     queryset = Service.objects.all()
     serializer_class = serializers.ServiceSerializer
     pagination_class = paginators.ServicePaginator
+    # permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         queryset = self.queryset
@@ -186,11 +209,13 @@ class ServiceViewSet(viewsets.ModelViewSet):
 class DiscountViewSet(viewsets.ModelViewSet):
     queryset = Discount.objects.all()
     serializer_class = serializers.DiscountSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
 
 class ServiceScheduleViewSet(viewsets.ModelViewSet):
     queryset = ServiceSchedule.objects.all()
     serializer_class = serializers.ServiceScheduleSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         queryset = self.queryset
@@ -227,6 +252,7 @@ class BookingViewSet(viewsets.ModelViewSet):
     queryset = Booking.objects.all()
     serializer_class = serializers.BookingSerializer
     pagination_class = CustomPageNumberPagination  # Đặt class phân trang
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         queryset = self.queryset
@@ -313,7 +339,7 @@ class BookingViewSet(viewsets.ModelViewSet):
         if not customer_id:
             return Response({"detail": "customer_id is required"}, status=status.HTTP_400_BAD_REQUEST)
 
-        queryset = self.queryset.filter(customer=customer_id, payment_status=True)
+        queryset = self.queryset.filter(customer=customer_id, payment_status=True).order_by('-service_schedule__date')
 
         paginator = self.pagination_class()
         paginated_bookings = paginator.paginate_queryset(queryset, request)
@@ -344,6 +370,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
     queryset = Review.objects.all()
     serializer_class = serializers.ReviewSerializer
     pagination_class = CustomPageNumberPagination  # Đặt class phân trang
+    permission_classes = [permissions.IsAuthenticated]
 
     @action(detail=False, methods=['get'], url_path='service-reviews', url_name='service-reviews')
     def service_reviews(self, request):
@@ -353,7 +380,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
             return Response({"detail": "service_id is required"}, status=status.HTTP_400_BAD_REQUEST)
 
         # Lọc danh sách đánh giá dựa trên service_id
-        reviews = self.queryset.filter(service_id=service_id)
+        reviews = self.queryset.filter(service_id=service_id).order_by('-created_date')
 
         # Phân trang
         paginator = self.pagination_class()
