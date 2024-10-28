@@ -140,7 +140,7 @@ class ServiceTypeViewSet(viewsets.ModelViewSet):
 
 
 class ProvinceViewSet(viewsets.ModelViewSet):
-    queryset = Province.objects.all()
+    queryset = Province.objects.all().order_by('name')
     serializer_class = serializers.ProvinceSerializer
     # permission_classes = [permissions.IsAuthenticated]
 
@@ -171,6 +171,7 @@ class ServiceViewSet(viewsets.ModelViewSet):
     queryset = Service.objects.all()
     serializer_class = serializers.ServiceSerializer
     pagination_class = paginators.ServicePaginator
+
     # permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
@@ -207,7 +208,7 @@ class ServiceViewSet(viewsets.ModelViewSet):
 
 
 class DiscountViewSet(viewsets.ModelViewSet):
-    queryset = Discount.objects.all()
+    queryset = Discount.objects.all().order_by('discount')
     serializer_class = serializers.DiscountSerializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -264,6 +265,7 @@ class BookingViewSet(viewsets.ModelViewSet):
 
         return queryset
 
+    # lấy danh sách booking đã được thanh toán của khách hàng
     @action(detail=False, methods=['get'], url_path='customer-bookings', url_name='customer-bookings')
     def customer_bookings(self, request):
         customer_id = request.query_params.get('customer_id')
@@ -297,6 +299,7 @@ class BookingViewSet(viewsets.ModelViewSet):
 
         return paginator.get_paginated_response(data)
 
+    # lấy danh sách booking chưa được thanh toán của khách hàng
     @action(detail=False, methods=['get'], url_path='customer-bookings-notyetpaid',
             url_name='customer-bookings-notyetpaid')
     def customer_bookings_notyetpaid(self, request):
@@ -332,6 +335,7 @@ class BookingViewSet(viewsets.ModelViewSet):
 
         return paginator.get_paginated_response(data)
 
+    # lấy danh sách lịch sử booking của khách hàng
     @action(detail=False, methods=['get'], url_path='bookings-history', url_name='bookings-history')
     def bookings_history(self, request):
         customer_id = request.query_params.get('customer_id')
@@ -372,6 +376,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
     pagination_class = CustomPageNumberPagination  # Đặt class phân trang
     permission_classes = [permissions.IsAuthenticated]
 
+    # lấy danh sách đánh giá của 1 dịch vụ
     @action(detail=False, methods=['get'], url_path='service-reviews', url_name='service-reviews')
     def service_reviews(self, request):
         service_id = request.query_params.get('service_id')
@@ -402,6 +407,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
         return paginator.get_paginated_response(data)
 
 
+# Xử lý thanh toán Momo
 @csrf_exempt
 def payment_view(request: HttpRequest):
     accessKey = 'F8BBA842ECF85'
@@ -459,6 +465,7 @@ config = {
 }
 
 
+# Xử lý thanh toán ZaloPay
 @csrf_exempt
 def create_payment(request):
     if request.method == 'POST':
@@ -474,7 +481,7 @@ def create_payment(request):
             "embed_data": json.dumps({}),
             "item": json.dumps([{}]),
             "amount": amount,
-            "description": "Thanh Toán Vé Xe #" + str(transID),
+            "description": "Thanh Toán dịch vụ du lịch #" + str(transID),
             "bank_code": "",
         }
 
@@ -494,11 +501,11 @@ def create_payment(request):
         return JsonResponse({"error": "Only POST requests are allowed"})
 
 
+# Lấy danh sách các booking của 1 lịch trình
 def get_customers_by_schedule(request, schedule_id):
-    # Lấy danh sách các đặt chỗ liên quan đến lịch trình cụ thể
     bookings = Booking.objects.filter(service_schedule_id=schedule_id).select_related('customer')
 
-    # Trích xuất thông tin của khách hàng từ các đặt chỗ
+    # Trích xuất thông tin của khách hàng từ các booking
     customers = []
     for booking in bookings:
         customer = booking.customer
@@ -513,7 +520,7 @@ def get_customers_by_schedule(request, schedule_id):
 
 
 class RevenueViewSet(viewsets.ViewSet):
-
+    # Thống kê doanh thu của các dic vụ trong tháng
     @action(detail=True, methods=['get'], url_path='monthly-revenue')
     def monthly_revenue(self, request, pk=None):
         month = request.query_params.get('month')
@@ -533,6 +540,7 @@ class RevenueViewSet(viewsets.ViewSet):
         serializer = ServiceRevenueSerializer(revenue_data, many=True)
         return Response(serializer.data, status=200)
 
+    # Thống kê doanh thu dịch vụ của các tháng trong năm
     @action(detail=False, methods=['get'], url_path='yearly-revenue')
     def yearly_revenue(self, request):
         year = request.query_params.get('year')
